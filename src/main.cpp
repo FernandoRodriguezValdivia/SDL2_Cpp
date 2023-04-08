@@ -20,7 +20,7 @@ SDL_Window* gWindow = NULL;
 SDL_Surface* gScreenSurface = NULL;
 
 // La imagen que cargaremos y mostraremos en la superficie ( global)
-SDL_Surface* gHelloWorld = NULL;
+SDL_Surface* gXOut = NULL;
 
 // dimensiones de la ventana
 const int SCREEN_WIDTH = 640;
@@ -59,9 +59,9 @@ bool loadMedia()
 {
 	bool succes = true;
 	// cargar imagen
-	gHelloWorld = SDL_LoadBMP("res/gfx/hello_world.bmp");
+	gXOut = SDL_LoadBMP("res/gfx/x.bmp");
 
-	if( gHelloWorld == NULL)
+	if( gXOut == NULL)
 	{
 		// SDL_GetError() devuelve el ultimo error
 		printf("No se pudo cargar la imagen! SDL_Error: %s\n", SDL_GetError());
@@ -73,8 +73,8 @@ bool loadMedia()
 void close()
 {
 	// liberar superficie de imagen
-	SDL_FreeSurface( gHelloWorld );
-	gHelloWorld = NULL;
+	SDL_FreeSurface( gXOut );
+	gXOut = NULL;
 
 	// destruimos la ventana
 	SDL_DestroyWindow( gWindow );
@@ -101,22 +101,32 @@ int main(int argc, char* args[])
 			printf("No se pudo cargar media\n");
 		}
 		else
-		{
-			// proyectamos la imagen en la superficie de la ventana
-			SDL_BlitSurface( gHelloWorld, NULL, gScreenSurface, NULL );
+		{			
+			// Explicando el bucle de eventos
 
-			// actualizamos la superficie
-			SDL_UpdateWindowSurface( gWindow );
-			// hack para tener la ventana abierto ( esto es temporal )
+			// Declaramos el evento, que es cuando hacemos una accion con un periferic de entrada
 			SDL_Event e;
+
+			// la condicion de salida
 			bool quit = false;
+
+			// bucle de la aplicacion
 			while( quit == false )
 			{
+
+				// bucle de eventos, SDL_PollEvent(& e) devuelve 1 mientras hay un evento en la cola de eventos
 				while( SDL_PollEvent( &e ) )
 				{ 
+					// Si el evento es de SDL_QUIT que es cuando se cierra la ultima ventana se sale
 					if( e.type == SDL_QUIT ) quit = true;
 				}
 			}
+
+			// proyectamos la imagen en la superficie de la ventana
+			SDL_BlitSurface( gXOut, NULL, gScreenSurface, NULL );
+
+			// actualizamos la superficie
+			SDL_UpdateWindowSurface( gWindow );
 		}
 	}
 	// destruimos la ventana y liberamos los recursos
