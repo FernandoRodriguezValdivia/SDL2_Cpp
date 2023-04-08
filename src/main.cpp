@@ -3,22 +3,11 @@
 #include <stdio.h>
 #include <string>
 
-// Ahora veamos como manejar los eventos de key press
+// Mejora de carga de imagen y estrechamiento suave
 
 // dimensiones de la ventana
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
-
-// declaramos una enumeracion que nos ayudara a identificar las superficies usando keys
-enum KeyPressSurfaces
-{
-	KEY_PRESS_SURFACE_DEFAULT,
-	KEY_PRESS_SURFACE_UP,
-	KEY_PRESS_SURFACE_DOWN,
-	KEY_PRESS_SURFACE_LEFT,
-	KEY_PRESS_SURFACE_RIGHT,
-	KEY_PRESS_SURFACE_TOTAL
-};
 
 // Función para iniciar SDL y crear una ventana con su superficie
 bool init();
@@ -38,11 +27,8 @@ SDL_Window* gWindow = NULL;
 // La superficie dentro de la superficie de la ventana (ahora es global)
 SDL_Surface* gScreenSurface = NULL;
 
-// Un array de imagenes que corresponden a las keypress
-SDL_Surface* gKeyPressSurfaces[ KEY_PRESS_SURFACE_TOTAL ];
-
 // La imagen actual mostrada
-SDL_Surface* gCurrentSurface = NULL;
+SDL_Surface* gStretchedSurface = NULL;
 
 
 // creamos init()
@@ -78,48 +64,12 @@ bool loadMedia()
 {
 	bool succes = true;
 
-	// cargar imagen por default
-	gKeyPressSurfaces[ KEY_PRESS_SURFACE_DEFAULT ] = loadSurface("res/gfx/press.bmp");
-	if( gKeyPressSurfaces[ KEY_PRESS_SURFACE_DEFAULT ] == NULL)
+	// cargar superficie (imagen) estirada
+	gStretchedSurface = loadSurface("res/gfx/stretch.bmp");
+	if( gStretchedSurface == NULL)
 	{
 		// SDL_GetError() devuelve el ultimo error
-		printf("No se pudo cargar la imagen por default!");
-		succes = false;
-	}
-
-	// cargar imagen por default
-	gKeyPressSurfaces[ KEY_PRESS_SURFACE_UP ] = loadSurface("res/gfx/up.bmp");
-	if( gKeyPressSurfaces[ KEY_PRESS_SURFACE_UP ] == NULL)
-	{
-		// SDL_GetError() devuelve el ultimo error
-		printf("No se pudo cargar la imagen up!");
-		succes = false;
-	}
-
-	// cargar imagen por default
-	gKeyPressSurfaces[ KEY_PRESS_SURFACE_DOWN ] = loadSurface("res/gfx/down.bmp");
-	if( gKeyPressSurfaces[ KEY_PRESS_SURFACE_DOWN ] == NULL)
-	{
-		// SDL_GetError() devuelve el ultimo error
-		printf("No se pudo cargar la imagen down!");
-		succes = false;
-	}
-
-	// cargar imagen por default
-	gKeyPressSurfaces[ KEY_PRESS_SURFACE_LEFT ] = loadSurface("res/gfx/left.bmp");
-	if( gKeyPressSurfaces[ KEY_PRESS_SURFACE_LEFT ] == NULL)
-	{
-		// SDL_GetError() devuelve el ultimo error
-		printf("No se pudo cargar la imagen left!");
-		succes = false;
-	}
-
-	// cargar imagen por default
-	gKeyPressSurfaces[ KEY_PRESS_SURFACE_RIGHT ] = loadSurface("res/gfx/right.bmp");
-	if( gKeyPressSurfaces[ KEY_PRESS_SURFACE_RIGHT ] == NULL)
-	{
-		// SDL_GetError() devuelve el ultimo error
-		printf("No se pudo cargar la imagen right!");
+		printf("No se pudo cargar la imagen stretch!");
 		succes = false;
 	}
 
@@ -128,12 +78,9 @@ bool loadMedia()
 
 void close()
 {
-	// liberar superficie de imagen de todo el array
-	for( int i = 0; i<KEY_PRESS_SURFACE_TOTAL; i++)
-	{
-		SDL_FreeSurface( gKeyPressSurfaces[i] );
-		gKeyPressSurfaces[i] = NULL;
-	}
+	// liberar superficie de imagen
+	SDL_FreeSurface( gStretchedSurface );
+	gStretchedSurface = NULL;
 	
 
 	// destruimos la ventana
@@ -148,14 +95,29 @@ void close()
 // Funcion que carga una imagen
 SDL_Surface* loadSurface( std::string path )
 {
+	//La imagen final optimizada
+	SDL_Surface* optimizedSurface = NULL;
+
 	// cargar la imagen de un path
 	SDL_Surface* loadedSurface = SDL_LoadBMP( path.c_str() );
 	if( loadedSurface == NULL )
 	{
 		printf("No se pudo cargar la imagen %s! SDL_Error: %s\n", path.c_str(), SDL_GetError());
 	}
+	else
+	{
+		// Convertimos al formato de la pantalla, el cero son banderas opcionales, en este caso no se pasa ninguna
+		optimizedSurface = SDL_ConvertSurface(loadedSurface, gScreenSurface->format,0);
+		if( optimizedSurface == NULL )
+		{
+			printf("No se pudo cargar la imagen optimizada %s! SDL_Error: %s\n", path.c_str(), SDL_GetError());
+		}
 
-	return loadedSurface;
+		// Liberamos la imagen cargada
+		SDL_FreeSurface( loadedSurface );
+	}
+
+	return optimizedSurface;
 }
 
 int main(int argc, char* args[])
@@ -175,8 +137,6 @@ int main(int argc, char* args[])
 		}
 		else
 		{			
-			// Explicando el bucle de eventos
-
 			// Declaramos el evento, que es cuando hacemos una accion con un periferic de entrada
 			SDL_Event e;
 
@@ -192,31 +152,21 @@ int main(int argc, char* args[])
 				{ 
 					// Si el evento es de SDL_QUIT que es cuando se cierra la ultima ventana se sale
 					if( e.type == SDL_QUIT ) quit = true;
-					else if( e.type == SDL_KEYDOWN)
-					{
-						// Cuando tenemos el type SDL_KEDOWN el tipo de tecla lo tenemos en keysym.sym
-						switch( e.key.keysym.sym )
-						{
-							case SDLK_UP:
-								gCurrentSurface = gKeyPressSurfaces[ KEY_PRESS_SURFACE_UP ];
-								break;
-							case SDLK_DOWN:
-								gCurrentSurface = gKeyPressSurfaces[ KEY_PRESS_SURFACE_DOWN ];
-								break;
-							case SDLK_LEFT:
-								gCurrentSurface = gKeyPressSurfaces[ KEY_PRESS_SURFACE_LEFT ];
-								break;
-							case SDLK_RIGHT:
-								gCurrentSurface = gKeyPressSurfaces[ KEY_PRESS_SURFACE_RIGHT ];
-								break;
-							default:
-								gCurrentSurface = gKeyPressSurfaces[ KEY_PRESS_SURFACE_DEFAULT ];
-								break;
-						}
-					}
 				}
-				// proyectamos la imagen actual en la superficie de la ventana
-				SDL_BlitSurface( gCurrentSurface, NULL, gScreenSurface, NULL );
+
+				// proyectamos la imagen estrechada en la superficie de la ventana, ahora en lugar de usar SDL_BlitSurface usamos SDL_BlitScaled
+
+				// creamos un rectangulo que se usara para estirar la imagen
+				SDL_Rect stretchRect;
+
+				// la posicionamos en la esquina superior izquierda y le damos las dimensiones de la ventana
+				stretchRect.x = 0;
+				stretchRect.y = 0;
+				stretchRect.w = SCREEN_WIDTH;
+				stretchRect.h = SCREEN_HEIGHT;
+
+				// Esta funcion ahora estira y copia la superficie de imagen gStretchedSurface en la superficie de pantalla gScreenSurface usando el rectangulo stretchRect como el area de destino. El parametro NULL es un rectangulo opcional que define un area de la imagen a copiar. en NULL significa que se copia toda la imagen
+				SDL_BlitScaled( gStretchedSurface, NULL, gScreenSurface, &stretchRect );
 
 				// actualizamos la superficie
 				SDL_UpdateWindowSurface( gWindow );
