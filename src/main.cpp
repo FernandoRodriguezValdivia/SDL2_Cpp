@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string>
 
-// Mejora de carga de imagen y estrechamiento suave
+// Cargando imagenes PNG con la extension SDL_image
 
 // dimensiones de la ventana
 const int SCREEN_WIDTH = 640;
@@ -28,7 +28,7 @@ SDL_Window* gWindow = NULL;
 SDL_Surface* gScreenSurface = NULL;
 
 // La imagen actual mostrada
-SDL_Surface* gStretchedSurface = NULL;
+SDL_Surface* gPNGSurface = NULL;
 
 
 // creamos init()
@@ -52,8 +52,23 @@ bool init()
 		}
 		else
 		{
-			// obtenemos la superficie en la ventana y la ponemos en screenSurface
-			gScreenSurface = SDL_GetWindowSurface( gWindow );
+			// Inicializamos la carga de PNG
+
+			// Defininimos la bandera que queremos cargar, en este caso es PNG
+			int imgFlags = IMG_INIT_PNG;
+
+			// Verificamos si se cargo correctamente, la funcion IMG_Init devuelve la bandera que se cargó, por eso lo comparamos bit a bit con la misma bandera.
+			if( !( IMG_Init( imgFlags ) & imgFlags ) )
+			{
+				// Ahora el error se obtiene con IMG_GetError()
+				printf( "SDL_image no pudo inicializar! SDL_image Error: %s\n", IMG_GetError() );
+				succes = false;
+			}
+			else
+			{
+				//obtenemos la superficie en la ventana y la ponemos en screenSurface
+				gScreenSurface = SDL_GetWindowSurface( gWindow );
+			}
 		}
 	}
 	return succes;
@@ -65,11 +80,11 @@ bool loadMedia()
 	bool succes = true;
 
 	// cargar superficie (imagen) estirada
-	gStretchedSurface = loadSurface("res/gfx/stretch.bmp");
-	if( gStretchedSurface == NULL)
+	gPNGSurface = loadSurface("res/gfx/loaded.png");
+	if( gPNGSurface == NULL)
 	{
 		// SDL_GetError() devuelve el ultimo error
-		printf("No se pudo cargar la imagen stretch!");
+		printf("No se pudo cargar la imagen PNG!");
 		succes = false;
 	}
 
@@ -79,8 +94,8 @@ bool loadMedia()
 void close()
 {
 	// liberar superficie de imagen
-	SDL_FreeSurface( gStretchedSurface );
-	gStretchedSurface = NULL;
+	SDL_FreeSurface( gPNGSurface );
+	gPNGSurface = NULL;
 	
 
 	// destruimos la ventana
@@ -89,6 +104,8 @@ void close()
 	gScreenSurface = NULL;
 	
 	// Salir de los subsistemas de SLD
+	// Ahora aumentamos IMG
+	IMG_Quit();
 	SDL_Quit();	
 }
 
@@ -98,11 +115,11 @@ SDL_Surface* loadSurface( std::string path )
 	//La imagen final optimizada
 	SDL_Surface* optimizedSurface = NULL;
 
-	// cargar la imagen de un path
-	SDL_Surface* loadedSurface = SDL_LoadBMP( path.c_str() );
+	// cargar la imagen de un path ahor con IMG
+	SDL_Surface* loadedSurface = IMG_Load( path.c_str() );
 	if( loadedSurface == NULL )
 	{
-		printf("No se pudo cargar la imagen %s! SDL_Error: %s\n", path.c_str(), SDL_GetError());
+		printf("No se pudo cargar la imagen %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError());
 	}
 	else
 	{
@@ -154,19 +171,8 @@ int main(int argc, char* args[])
 					if( e.type == SDL_QUIT ) quit = true;
 				}
 
-				// proyectamos la imagen estrechada en la superficie de la ventana, ahora en lugar de usar SDL_BlitSurface usamos SDL_BlitScaled
-
-				// creamos un rectangulo que se usara para estirar la imagen
-				SDL_Rect stretchRect;
-
-				// la posicionamos en la esquina superior izquierda y le damos las dimensiones de la ventana
-				stretchRect.x = 0;
-				stretchRect.y = 0;
-				stretchRect.w = SCREEN_WIDTH;
-				stretchRect.h = SCREEN_HEIGHT;
-
-				// Esta funcion ahora estira y copia la superficie de imagen gStretchedSurface en la superficie de pantalla gScreenSurface usando el rectangulo stretchRect como el area de destino. El parametro NULL es un rectangulo opcional que define un area de la imagen a copiar. en NULL significa que se copia toda la imagen
-				SDL_BlitScaled( gStretchedSurface, NULL, gScreenSurface, &stretchRect );
+				// cargamos la imagen como antes
+				SDL_BlitSurface( gPNGSurface, NULL, gScreenSurface, NULL );
 
 				// actualizamos la superficie
 				SDL_UpdateWindowSurface( gWindow );
