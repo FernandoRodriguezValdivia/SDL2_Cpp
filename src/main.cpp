@@ -80,7 +80,7 @@ bool loadMedia()
 	bool succes = true;
 
 	// cargar superficie (imagen) estirada
-	gPNGSurface = loadSurface("res/gfx/loaded.png");
+	gPNGSurface = loadSurface("../res/gfx/loaded.png");
 	if( gPNGSurface == NULL)
 	{
 		// SDL_GetError() devuelve el ultimo error

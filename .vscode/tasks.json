@@ -1,0 +1,56 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build Shell Debug",
+      "type": "shell",
+      "command": "g++ -c src/*.cpp -std=c++14 -g -Wall -m64 -I include -I C:/SDL2-w64/include && g++ *.o -o bin/debug/main -L C:/SDL2-w64/lib -lmingw32 -lSDL2main -lSDL2 -lSDL2_image && start bin/debug/main",
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    },
+    {
+      "label": "Build Release",
+      "type": "shell",
+      "command": "g++ -c src/*.cpp -std=c++14 -O3 -Wall -m64 -I include -I C:/SDL2-w64/include && g++ *.o -o bin/release/main -s -L C:/SDL2-w64/lib -lmingw32 -lSDL2main -lSDL2 -lSDL2_image && start bin/release/main",
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    },
+    {
+      "label": "Build Cpp Debug",
+      "type": "cppbuild",
+      "detail": "Build with cpp options",
+      "command": "g++",
+      "args": [
+        "-c",
+        "${workspaceFolder}/src/*.cpp",
+        "-std=c++14",
+        "-g",
+        "-Wall",
+        "-m64",
+        "-I",
+        "${workspaceFolder}/include",
+        "-I",
+        "C:/SDL2-w64/include",
+        "&&",
+        "g++",
+        "*.o",
+        "-o",
+        "${workspaceFolder}/bin/debug/main",
+        "-L",
+        "C:/SDL2-w64/lib",
+        "-lmingw32",
+        "-lSDL2main",
+        "-lSDL2",
+        "-lSDL2_image"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    }
+  ]
+}
