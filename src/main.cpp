@@ -80,11 +80,11 @@ bool loadMedia()
 	bool succes = true;
 
 	// cargar superficie (imagen) estirada
-	gPNGSurface = loadSurface("../res/gfx/loaded.png");
+	gPNGSurface = loadSurface("res/gfx/loaded.png");
 	if( gPNGSurface == NULL)
 	{
 		// SDL_GetError() devuelve el ultimo error
-		printf("No se pudo cargar la imagen PNG!");
+		printf("No se pudo cargar la imagen PNG!\n");
 		succes = false;
 	}
 
@@ -181,6 +181,9 @@ int main(int argc, char* args[])
 	}
 	// destruimos la ventana y liberamos los recursos
 	close();
+
+	printf("Presione una tecla para salir");
+	getchar();
 
 	return 0;	
 }
