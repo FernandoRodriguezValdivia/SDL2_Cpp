@@ -3,7 +3,9 @@
 #include <stdio.h>
 #include <string>
 
-// API de representación de texturas. Renderizando figuras basicas
+// Ventana gráfica (ViewPort)
+// SDL 2.0 también permite controlar dónde renderizas en la pantalla usando la ventana gráfica.
+// Usaremos la ventana gráfica para crear subpantallas
 
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
@@ -42,6 +44,12 @@ bool init()
 	}
 	else
 	{
+		//Set texture filtering to linear
+		if( !SDL_SetHint( SDL_HINT_RENDER_SCALE_QUALITY, "1" ) )
+		{
+			printf( "Warning: Linear texture filtering not enabled!" );
+		}
+
 		gWindow = SDL_CreateWindow("Tutorial de SDL / Imagen", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
 		if( gWindow == NULL)
 		{
@@ -79,16 +87,15 @@ bool loadMedia()
 {
 	bool succes = true;
 
-	/* Podemos renderizar figuras sin cargar imagenes
+	// Podemos renderizar figuras sin cargar imagenes
 	// cargar textura de PNG
-	gTexture = loadTexture("res/gfx/texture.png");
+	gTexture = loadTexture("res/gfx/viewport.png");
 	if( gTexture == NULL)
 	{
 		// SDL_GetError() devuelve el ultimo error
 		printf("No se pudo cargar la imagen PNG!\n");
 		succes = false;
 	}
-	*/
 
 	return succes;
 }
@@ -193,29 +200,41 @@ int main(int argc, char* args[])
 				}
 
 				// Limpiamos la pantalla con el color de fondo
-				SDL_SetRenderDrawColor( gRenderer, 0xFF, 0x00, 0xFF, 0xFF);
+				SDL_SetRenderDrawColor( gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 				SDL_RenderClear(gRenderer);
 
-				// Renderizar una region cuadrada rojo
-				SDL_Rect fillRect = { SCREEN_WIDTH / 4, SCREEN_HEIGHT / 4, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 };
-				SDL_SetRenderDrawColor( gRenderer, 0xFF, 0x00, 0x00, 0xFF);
-				SDL_RenderFillRect(gRenderer, &fillRect);
+				// Ventana grafica de arriba a la izquierda
+				SDL_Rect topleftViewPort;
+				topleftViewPort.x = 0;
+				topleftViewPort.y = 0;
+				topleftViewPort.h = SCREEN_HEIGHT / 2;
+				topleftViewPort.w = SCREEN_WIDTH / 2;
+				SDL_RenderSetViewport( gRenderer, &topleftViewPort );
 
-				// Renderizar un cuadrado verde
-				SDL_Rect outlineRect = { SCREEN_WIDTH / 6, SCREEN_HEIGHT / 6, SCREEN_WIDTH * 2 / 3, SCREEN_HEIGHT * 2 / 3 };
-				SDL_SetRenderDrawColor( gRenderer, 0x00, 0xFF, 0x00, 0xFF );
-				SDL_RenderDrawRect( gRenderer, &outlineRect);
+				// Renderizar textura a la ventana
+				SDL_RenderCopy( gRenderer, gTexture, NULL, NULL);
 
-				// Dibujar una linea horizontal azul
-				SDL_SetRenderDrawColor( gRenderer, 0x00, 0x00, 0xFF, 0xFF);
-				SDL_RenderDrawLine(gRenderer, 0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2);
+				// Ventana grafica de arriba a la derecha
+				SDL_Rect toprightViewPort;
+				toprightViewPort.x = SCREEN_WIDTH / 2;
+				toprightViewPort.y = 0;
+				toprightViewPort.h = SCREEN_HEIGHT / 2;
+				toprightViewPort.w = SCREEN_WIDTH / 2;
+				SDL_RenderSetViewport( gRenderer, &toprightViewPort );
 
-				// Dibujar linea vertical de puntos amarillos
-				SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0x00, 0xFF);
-				for( int i = 0; i < SCREEN_HEIGHT; i+=4)
-				{
-					SDL_RenderDrawPoint( gRenderer, SCREEN_WIDTH / 2, i);
-				}
+				// Renderizar textura a la ventana
+				SDL_RenderCopy( gRenderer, gTexture, NULL, NULL);
+
+				// Ventana grafica de abajo
+				SDL_Rect bottomViewPort;
+				bottomViewPort.x = 0;
+				bottomViewPort.y = SCREEN_HEIGHT / 2;
+				bottomViewPort.h = SCREEN_HEIGHT / 2;
+				bottomViewPort.w = SCREEN_WIDTH;
+				SDL_RenderSetViewport( gRenderer, &bottomViewPort );
+
+				// Renderizar textura a la ventana
+				SDL_RenderCopy( gRenderer, gTexture, NULL, NULL);
 
 				// actualizamos la pantalla
 				SDL_RenderPresent( gRenderer );
