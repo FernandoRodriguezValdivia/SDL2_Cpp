@@ -3,10 +3,11 @@
 #include <stdio.h>
 #include <string>
 
-// Color Keying
-// Aquí usaremos la eliminación de colores para dar a las texturas fondos transparentes.
-// Al renderizar varias imágenes en la pantalla, normalmente es necesario tener imágenes con fondos transparentes. Afortunadamente, SDL proporciona una forma sencilla de hacerlo mediante la eliminación de colores.
-// Aca crearemos una clase contenedora de la textura, ya que necesitamos ciertos valores de la imagen como tamaños y colores.
+// Representación de clips y hojas de sprites
+// Con el procesamiento de clips, puede mantener varias imágenes en una textura y renderizar la parte que necesita.
+// Usaremos esto para renderizar sprites individuales de una hoja de sprites.
+// A veces solo quieres renderizar parte de una textura. Muchas veces a los juegos les gusta mantener varias imágenes en la misma hoja de sprites en lugar de tener un montón de texturas.
+// Usando el renderizado de clips, podemos definir una parte de la textura para renderizar en lugar de renderizar todo.
 
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
@@ -27,8 +28,8 @@ class LTexture
 		// Liberamos textura
 		void free();
 
-		// Renderizamos textura en un punto dado
-		void render( int x, int y);
+		// Renderizamos textura en un punto dado y un rectangulo que define que parte de la textura se renderizara (NULL es si queremos renderizar todo)
+		void render( int x, int y, SDL_Rect* clip = NULL);
 
 		// Obtenemos las dimensiones de la imagen
 		int getWidth();
@@ -58,9 +59,9 @@ SDL_Window* gWindow = NULL;
 // El renderizador de la ventana ( cuando usamos texturas se necesita un SDL_Renderer para mostrarlo en pantalla)
 SDL_Renderer* gRenderer = NULL;
 
-// Texturas de escenas
-LTexture gFooTexture;
-LTexture gBackgroundTexture;
+// sprites de escenas
+SDL_Rect gSpriteClips[ 4 ]; // 4 escenas
+LTexture gSpriteSheetTexture; // 1 textura
 
 LTexture::LTexture()
 {
@@ -129,11 +130,20 @@ void LTexture::free()
 	}
 }
 
-void LTexture::render( int x, int y)
+void LTexture::render( int x, int y, SDL_Rect* clip)
 {
 	// Establecer el espacio de renderizado y renderizar en pantalla
 	SDL_Rect renderQuad = { x, y, mWidth, mHeight };
-	SDL_RenderCopy( gRenderer, mTexture, NULL, &renderQuad);
+
+	// Establecer las dimensiones clip de renderizado
+	if( clip != NULL)
+	{
+		renderQuad.w = clip->w;
+		renderQuad.h = clip->h;
+	}
+
+	// Renderizamos al screen (ahora usamos el clip para tomar unaa parte de la textura)
+	SDL_RenderCopy( gRenderer, mTexture, clip, &renderQuad);
 }
 
 int LTexture::getWidth()
@@ -199,28 +209,47 @@ bool loadMedia()
 {
 	bool succes = true;
 
-	// cargar textura Foo
-	if( !gFooTexture.loadFromFile("res/gfx/foo.png") )
+	// Cargamos las sprites de hojas
+	if( !gSpriteSheetTexture.loadFromFile("res/gfx/dots.png") )
 	{
-		printf("No se pudo cargar la textura imagen foo!\n");
+		printf("No se pudo cargar la textura imagen dots!\n");
 		succes = false;
 	}
-	
-	// cargar textura Background
-	if( !gBackgroundTexture.loadFromFile("res/gfx/background.png") )
+	else
 	{
-		printf("No se pudo cargar la textura imagen background!\n");
-		succes = false;
-	}
+		// Establecemos el spriite de arriba a la izquierda
+		gSpriteClips[0].x = 0;
+		gSpriteClips[0].y = 0;
+		gSpriteClips[0].w = 100;
+		gSpriteClips[0].h = 100;
 
+		// Establecemos el spriite de arriba a la derecha
+		gSpriteClips[1].x = 100;
+		gSpriteClips[1].y = 0;
+		gSpriteClips[1].w = 100;
+		gSpriteClips[1].h = 100;
+
+		// Establecemos el spriite de abajo a la izquierda
+		gSpriteClips[2].x = 0;
+		gSpriteClips[2].y = 100;
+		gSpriteClips[2].w = 100;
+		gSpriteClips[2].h = 100;
+
+		// Establecemos el spriite de abajo a la derecha
+		gSpriteClips[3].x = 100;
+		gSpriteClips[3].y = 100;
+		gSpriteClips[3].w = 100;
+		gSpriteClips[3].h = 100;
+		
+	}
+		
 	return succes;
 }
 
 void close()
 {
 	// liberar imagenes cargada en textura
-	gFooTexture.free();
-	gBackgroundTexture.free();	
+	gSpriteSheetTexture.free();
 
 	// destruimos la ventana
 	SDL_DestroyRenderer( gRenderer );
@@ -272,11 +301,17 @@ int main(int argc, char* args[])
 				SDL_SetRenderDrawColor( gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 				SDL_RenderClear(gRenderer);
 
-				// renderizar background
-				gBackgroundTexture.render(0,0);
+				// renderizar sprite de arriba a la izquierda
+				gSpriteSheetTexture.render(0,0,&gSpriteClips[0]);
 
-				// renderizar foo
-				gFooTexture.render(240,190);
+				// renderizar sprite de arriba a la derecha
+				gSpriteSheetTexture.render( SCREEN_WIDTH - gSpriteClips[1].w, 0, &gSpriteClips[1]);
+
+				// renderizar sprite de abajo a la izquierda
+				gSpriteSheetTexture.render(0, SCREEN_HEIGHT - gSpriteClips[2].h , &gSpriteClips[2]);
+
+				// renderizar sprite de abajo a la derecha
+				gSpriteSheetTexture.render(SCREEN_WIDTH - gSpriteClips[3].w, SCREEN_HEIGHT - gSpriteClips[3].h, &gSpriteClips[3]);
 
 				// actualizamos la pantalla
 				SDL_RenderPresent( gRenderer );
