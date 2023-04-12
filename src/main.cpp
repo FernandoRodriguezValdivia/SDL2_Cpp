@@ -3,12 +3,45 @@
 #include <stdio.h>
 #include <string>
 
-// Ventana gráfica (ViewPort)
-// SDL 2.0 también permite controlar dónde renderizas en la pantalla usando la ventana gráfica.
-// Usaremos la ventana gráfica para crear subpantallas
+// Color Keying
+// Aquí usaremos la eliminación de colores para dar a las texturas fondos transparentes.
+// Al renderizar varias imágenes en la pantalla, normalmente es necesario tener imágenes con fondos transparentes. Afortunadamente, SDL proporciona una forma sencilla de hacerlo mediante la eliminación de colores.
+// Aca crearemos una clase contenedora de la textura, ya que necesitamos ciertos valores de la imagen como tamaños y colores.
 
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
+
+// Clase de contenedor de textura
+class LTexture
+{
+	public:
+		//Inicializamos valores
+		LTexture();
+
+		// Liberamos memoria
+		~LTexture();
+
+		// Cargamos una imagen de un path
+		bool loadFromFile( std::string path );
+
+		// Liberamos textura
+		void free();
+
+		// Renderizamos textura en un punto dado
+		void render( int x, int y);
+
+		// Obtenemos las dimensiones de la imagen
+		int getWidth();
+		int getHeight();
+	
+	private:
+		// la textura de hardware real
+		SDL_Texture* mTexture;
+
+		// Dimension de la imagen
+		int mWidth;
+		int mHeight;
+};
 
 // Función para iniciar SDL y crear una ventana con su superficie
 bool init();
@@ -19,20 +52,99 @@ bool loadMedia();
 // Función para liberar media y cerrar SDL
 void close();
 
-// Función que cargará una imagen individual como una textura desde una superificie, toma como argumento el path
-SDL_Texture* loadTextureFromSurface( std::string path);
-
-// Función que cargará una imagen individual como una textura sin superficie, toma como argumento el path
-SDL_Texture* loadTexture( std::string path);
-
 //La ventana que será renderizada (ahora es global)
 SDL_Window* gWindow = NULL;
 
 // El renderizador de la ventana ( cuando usamos texturas se necesita un SDL_Renderer para mostrarlo en pantalla)
 SDL_Renderer* gRenderer = NULL;
 
-// La textura actual mostrada
-SDL_Texture* gTexture = NULL;
+// Texturas de escenas
+LTexture gFooTexture;
+LTexture gBackgroundTexture;
+
+LTexture::LTexture()
+{
+	// Inicializar
+	mTexture = NULL;
+	mWidth = 0;
+	mHeight = 0;
+}
+
+LTexture::~LTexture()
+{
+	// Liberar memoria
+	free();
+}
+
+bool LTexture::loadFromFile( std::string path )
+{
+	// Liberar la textura pre existente
+	free();
+
+	// La textura final
+	SDL_Texture* newTexture = NULL;
+
+	// Cargar la imagen a una superficie
+	SDL_Surface* loadedSurface = IMG_Load( path.c_str());
+	if( loadedSurface == NULL)
+	{
+		printf("No se pudo cargar la imagen %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError());
+	}
+	else
+	{
+		// Color de la imagen
+		SDL_SetColorKey(loadedSurface, SDL_TRUE, SDL_MapRGB( loadedSurface -> format, 0, 0xFF, 0xFF));
+
+		// Crear la texturra de la supericie de pixel
+		newTexture = SDL_CreateTextureFromSurface(gRenderer, loadedSurface);
+		if( newTexture == NULL)
+		{
+			printf("No se pudo crear la textura de %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError());
+		}
+		else
+		{
+			// obtener las dimensiones de la imagen
+			mWidth = loadedSurface->w;
+			mHeight = loadedSurface->h;
+		}
+
+		// Liberamos la superficie cargada
+		SDL_FreeSurface( loadedSurface );
+	}
+
+	mTexture = newTexture;
+	return mTexture != NULL;
+}
+
+void LTexture::free()
+{
+	// Liberamos textura si existe
+	if( mTexture != NULL )
+	{
+		// destruye la textura y reinicializa las variables
+		SDL_DestroyTexture( mTexture );
+		mTexture = NULL;
+		mWidth = 0;
+		mHeight = 0;
+	}
+}
+
+void LTexture::render( int x, int y)
+{
+	// Establecer el espacio de renderizado y renderizar en pantalla
+	SDL_Rect renderQuad = { x, y, mWidth, mHeight };
+	SDL_RenderCopy( gRenderer, mTexture, NULL, &renderQuad);
+}
+
+int LTexture::getWidth()
+{
+	return mWidth;
+}
+
+int LTexture::getHeight()
+{
+	return mHeight;
+}
 
 bool init()
 {
@@ -87,13 +199,17 @@ bool loadMedia()
 {
 	bool succes = true;
 
-	// Podemos renderizar figuras sin cargar imagenes
-	// cargar textura de PNG
-	gTexture = loadTexture("res/gfx/viewport.png");
-	if( gTexture == NULL)
+	// cargar textura Foo
+	if( !gFooTexture.loadFromFile("res/gfx/foo.png") )
 	{
-		// SDL_GetError() devuelve el ultimo error
-		printf("No se pudo cargar la imagen PNG!\n");
+		printf("No se pudo cargar la textura imagen foo!\n");
+		succes = false;
+	}
+	
+	// cargar textura Background
+	if( !gBackgroundTexture.loadFromFile("res/gfx/background.png") )
+	{
+		printf("No se pudo cargar la textura imagen background!\n");
 		succes = false;
 	}
 
@@ -102,10 +218,9 @@ bool loadMedia()
 
 void close()
 {
-	// liberar imagen cargada en textura
-	SDL_DestroyTexture ( gTexture );
-	gTexture = NULL;
-	
+	// liberar imagenes cargada en textura
+	gFooTexture.free();
+	gBackgroundTexture.free();	
 
 	// destruimos la ventana
 	SDL_DestroyRenderer( gRenderer );
@@ -118,52 +233,6 @@ void close()
 	IMG_Quit();
 	SDL_Quit();	
 }
-
-// Funcion que carga una textura desde una superficie
-SDL_Texture* loadTextureFromSurface( std::string path )
-{
-	//La textura final optimizada
-	SDL_Texture* newTexture = NULL;
-
-	// cargar la imagen de un path
-	SDL_Surface* loadedSurface = IMG_Load( path.c_str() );
-	if( loadedSurface == NULL )
-	{
-		printf("No se pudo cargar la imagen %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError());
-	}
-	else
-	{
-		// Crear la textura desde la superficie
-		newTexture = SDL_CreateTextureFromSurface( gRenderer, loadedSurface );
-		if( newTexture == NULL )
-		{
-			printf("No se pudo cargar la imagen optimizada %s! SDL_Error: %s\n", path.c_str(), SDL_GetError());
-		}
-
-		// Liberamos la imagen cargada
-		SDL_FreeSurface( loadedSurface );
-	}
-
-	return newTexture;
-}
-
-// Funcion que carga una textura sin superficie usando la API IMG_LoadTexture
-SDL_Texture* loadTexture( std::string path )
-{
-	//La textura final optimizada
-	SDL_Texture* newTexture = NULL;
-
-	// cargar la textura de un path
-	newTexture = IMG_LoadTexture( gRenderer, path.c_str() );
-
-	if( newTexture == NULL )
-	{
-		printf("No se pudo cargar la textura %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError());
-	}
-	
-	return newTexture;
-}
-
 
 int main(int argc, char* args[])
 {
@@ -203,38 +272,11 @@ int main(int argc, char* args[])
 				SDL_SetRenderDrawColor( gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 				SDL_RenderClear(gRenderer);
 
-				// Ventana grafica de arriba a la izquierda
-				SDL_Rect topleftViewPort;
-				topleftViewPort.x = 0;
-				topleftViewPort.y = 0;
-				topleftViewPort.h = SCREEN_HEIGHT / 2;
-				topleftViewPort.w = SCREEN_WIDTH / 2;
-				SDL_RenderSetViewport( gRenderer, &topleftViewPort );
+				// renderizar background
+				gBackgroundTexture.render(0,0);
 
-				// Renderizar textura a la ventana
-				SDL_RenderCopy( gRenderer, gTexture, NULL, NULL);
-
-				// Ventana grafica de arriba a la derecha
-				SDL_Rect toprightViewPort;
-				toprightViewPort.x = SCREEN_WIDTH / 2;
-				toprightViewPort.y = 0;
-				toprightViewPort.h = SCREEN_HEIGHT / 2;
-				toprightViewPort.w = SCREEN_WIDTH / 2;
-				SDL_RenderSetViewport( gRenderer, &toprightViewPort );
-
-				// Renderizar textura a la ventana
-				SDL_RenderCopy( gRenderer, gTexture, NULL, NULL);
-
-				// Ventana grafica de abajo
-				SDL_Rect bottomViewPort;
-				bottomViewPort.x = 0;
-				bottomViewPort.y = SCREEN_HEIGHT / 2;
-				bottomViewPort.h = SCREEN_HEIGHT / 2;
-				bottomViewPort.w = SCREEN_WIDTH;
-				SDL_RenderSetViewport( gRenderer, &bottomViewPort );
-
-				// Renderizar textura a la ventana
-				SDL_RenderCopy( gRenderer, gTexture, NULL, NULL);
+				// renderizar foo
+				gFooTexture.render(240,190);
 
 				// actualizamos la pantalla
 				SDL_RenderPresent( gRenderer );
