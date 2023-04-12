@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string>
 
-// API de representación de texturas. Esto brinda una representación basada en hardware rápida y flexible
+// API de representación de texturas. Renderizando figuras basicas
 
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
@@ -79,6 +79,7 @@ bool loadMedia()
 {
 	bool succes = true;
 
+	/* Podemos renderizar figuras sin cargar imagenes
 	// cargar textura de PNG
 	gTexture = loadTexture("res/gfx/texture.png");
 	if( gTexture == NULL)
@@ -87,6 +88,7 @@ bool loadMedia()
 		printf("No se pudo cargar la imagen PNG!\n");
 		succes = false;
 	}
+	*/
 
 	return succes;
 }
@@ -190,11 +192,30 @@ int main(int argc, char* args[])
 					if( e.type == SDL_QUIT ) quit = true;
 				}
 
-				// Limpiamos la pantalla
+				// Limpiamos la pantalla con el color de fondo
+				SDL_SetRenderDrawColor( gRenderer, 0xFF, 0x00, 0xFF, 0xFF);
 				SDL_RenderClear(gRenderer);
 
-				// Renderizamos la textura a la pantalla
-				SDL_RenderCopy( gRenderer, gTexture, NULL, NULL);
+				// Renderizar una region cuadrada rojo
+				SDL_Rect fillRect = { SCREEN_WIDTH / 4, SCREEN_HEIGHT / 4, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 };
+				SDL_SetRenderDrawColor( gRenderer, 0xFF, 0x00, 0x00, 0xFF);
+				SDL_RenderFillRect(gRenderer, &fillRect);
+
+				// Renderizar un cuadrado verde
+				SDL_Rect outlineRect = { SCREEN_WIDTH / 6, SCREEN_HEIGHT / 6, SCREEN_WIDTH * 2 / 3, SCREEN_HEIGHT * 2 / 3 };
+				SDL_SetRenderDrawColor( gRenderer, 0x00, 0xFF, 0x00, 0xFF );
+				SDL_RenderDrawRect( gRenderer, &outlineRect);
+
+				// Dibujar una linea horizontal azul
+				SDL_SetRenderDrawColor( gRenderer, 0x00, 0x00, 0xFF, 0xFF);
+				SDL_RenderDrawLine(gRenderer, 0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2);
+
+				// Dibujar linea vertical de puntos amarillos
+				SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0x00, 0xFF);
+				for( int i = 0; i < SCREEN_HEIGHT; i+=4)
+				{
+					SDL_RenderDrawPoint( gRenderer, SCREEN_WIDTH / 2, i);
+				}
 
 				// actualizamos la pantalla
 				SDL_RenderPresent( gRenderer );
