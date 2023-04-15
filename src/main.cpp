@@ -3,11 +3,8 @@
 #include <stdio.h>
 #include <string>
 
-// Representación de clips y hojas de sprites
-// Con el procesamiento de clips, puede mantener varias imágenes en una textura y renderizar la parte que necesita.
-// Usaremos esto para renderizar sprites individuales de una hoja de sprites.
-// A veces solo quieres renderizar parte de una textura. Muchas veces a los juegos les gusta mantener varias imágenes en la misma hoja de sprites en lugar de tener un montón de texturas.
-// Usando el renderizado de clips, podemos definir una parte de la textura para renderizar en lugar de renderizar todo.
+// Modularizando una textura usando varios colores.
+// Funciona como un multiplicador a los colores de la imagen
 
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
@@ -27,6 +24,9 @@ class LTexture
 
 		// Liberamos textura
 		void free();
+
+		// Establecer modulación de color
+		void setColor(Uint8 red, Uint8 green, Uint8 blue);
 
 		// Renderizamos textura en un punto dado y un rectangulo que define que parte de la textura se renderizara (NULL es si queremos renderizar todo)
 		void render( int x, int y, SDL_Rect* clip = NULL);
@@ -60,8 +60,7 @@ SDL_Window* gWindow = NULL;
 SDL_Renderer* gRenderer = NULL;
 
 // sprites de escenas
-SDL_Rect gSpriteClips[ 4 ]; // 4 escenas
-LTexture gSpriteSheetTexture; // 1 textura
+LTexture gModulatedTexture; // 1 textura
 
 LTexture::LTexture()
 {
@@ -128,6 +127,12 @@ void LTexture::free()
 		mWidth = 0;
 		mHeight = 0;
 	}
+}
+
+void LTexture::setColor(Uint8 red, Uint8 green, Uint8 blue)
+{
+	// Modular textura
+	SDL_SetTextureColorMod(mTexture, red, green, blue);
 }
 
 void LTexture::render( int x, int y, SDL_Rect* clip)
@@ -210,46 +215,19 @@ bool loadMedia()
 	bool succes = true;
 
 	// Cargamos las sprites de hojas
-	if( !gSpriteSheetTexture.loadFromFile("res/gfx/dots.png") )
+	if( !gModulatedTexture.loadFromFile("res/gfx/colors.png") )
 	{
 		printf("No se pudo cargar la textura imagen dots!\n");
 		succes = false;
 	}
-	else
-	{
-		// Establecemos el spriite de arriba a la izquierda
-		gSpriteClips[0].x = 0;
-		gSpriteClips[0].y = 0;
-		gSpriteClips[0].w = 100;
-		gSpriteClips[0].h = 100;
 
-		// Establecemos el spriite de arriba a la derecha
-		gSpriteClips[1].x = 100;
-		gSpriteClips[1].y = 0;
-		gSpriteClips[1].w = 100;
-		gSpriteClips[1].h = 100;
-
-		// Establecemos el spriite de abajo a la izquierda
-		gSpriteClips[2].x = 0;
-		gSpriteClips[2].y = 100;
-		gSpriteClips[2].w = 100;
-		gSpriteClips[2].h = 100;
-
-		// Establecemos el spriite de abajo a la derecha
-		gSpriteClips[3].x = 100;
-		gSpriteClips[3].y = 100;
-		gSpriteClips[3].w = 100;
-		gSpriteClips[3].h = 100;
-		
-	}
-		
 	return succes;
 }
 
 void close()
 {
 	// liberar imagenes cargada en textura
-	gSpriteSheetTexture.free();
+	gModulatedTexture.free();
 
 	// destruimos la ventana
 	SDL_DestroyRenderer( gRenderer );
@@ -283,6 +261,11 @@ int main(int argc, char* args[])
 			// Declaramos el evento, que es cuando hacemos una accion con un periferic de entrada
 			SDL_Event e;
 
+			// Modulation components
+			Uint8 r = 255;
+			Uint8 g = 255;
+			Uint8 b = 255;
+
 			// la condicion de salida
 			bool quit = false;
 
@@ -295,23 +278,41 @@ int main(int argc, char* args[])
 				{ 
 					// Si el evento es de SDL_QUIT que es cuando se cierra la ultima ventana se sale
 					if( e.type == SDL_QUIT ) quit = true;
+					else if(e.type == SDL_KEYDOWN)
+					{
+						switch (e.key.keysym.sym)
+						{
+						case SDLK_q:
+							r+=32;
+							break;
+						case SDLK_w:
+							g+=32;
+							break;
+						case SDLK_e:
+							b+=32;
+							break;
+						case SDLK_r:
+							r-=32;
+							break;
+						case SDLK_t:
+							g-=32;
+							break;
+						case SDLK_y:
+							b-=32;
+							break;
+						default:
+							break;
+						}
+					}
 				}
 
 				// Limpiamos la pantalla con el color de fondo
 				SDL_SetRenderDrawColor( gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 				SDL_RenderClear(gRenderer);
 
-				// renderizar sprite de arriba a la izquierda
-				gSpriteSheetTexture.render(0,0,&gSpriteClips[0]);
-
-				// renderizar sprite de arriba a la derecha
-				gSpriteSheetTexture.render( SCREEN_WIDTH - gSpriteClips[1].w, 0, &gSpriteClips[1]);
-
-				// renderizar sprite de abajo a la izquierda
-				gSpriteSheetTexture.render(0, SCREEN_HEIGHT - gSpriteClips[2].h , &gSpriteClips[2]);
-
-				// renderizar sprite de abajo a la derecha
-				gSpriteSheetTexture.render(SCREEN_WIDTH - gSpriteClips[3].w, SCREEN_HEIGHT - gSpriteClips[3].h, &gSpriteClips[3]);
+				// Modularizar y renderizar
+				gModulatedTexture.setColor(r,g,b);
+				gModulatedTexture.render(0,0);
 
 				// actualizamos la pantalla
 				SDL_RenderPresent( gRenderer );
