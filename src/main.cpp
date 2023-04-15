@@ -3,8 +3,9 @@
 #include <stdio.h>
 #include <string>
 
-// Modularizando una textura usando varios colores.
-// Funciona como un multiplicador a los colores de la imagen
+// alpha blending.
+// Gracias al nuevo renderizado acelerado por hardware, la transparencia es mucho más rápida en SDL 2.0. 
+// Aquí usaremos la modulación alfa (que funciona de manera muy similar a la modulación de color) para controlar la transparencia de una textura.
 
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
@@ -27,6 +28,12 @@ class LTexture
 
 		// Establecer modulación de color
 		void setColor(Uint8 red, Uint8 green, Uint8 blue);
+
+		//Set blending
+		void setBlendMode( SDL_BlendMode blending );
+
+		//Set alpha modulation
+		void setAlpha( Uint8 alpha );
 
 		// Renderizamos textura en un punto dado y un rectangulo que define que parte de la textura se renderizara (NULL es si queremos renderizar todo)
 		void render( int x, int y, SDL_Rect* clip = NULL);
@@ -59,8 +66,9 @@ SDL_Window* gWindow = NULL;
 // El renderizador de la ventana ( cuando usamos texturas se necesita un SDL_Renderer para mostrarlo en pantalla)
 SDL_Renderer* gRenderer = NULL;
 
-// sprites de escenas
-LTexture gModulatedTexture; // 1 textura
+LTexture gModulatedTexture;
+
+LTexture gBackgroundTexture;
 
 LTexture::LTexture()
 {
@@ -151,6 +159,18 @@ void LTexture::render( int x, int y, SDL_Rect* clip)
 	SDL_RenderCopy( gRenderer, mTexture, clip, &renderQuad);
 }
 
+void LTexture::setBlendMode( SDL_BlendMode blending )
+{
+    //Set blending function
+    SDL_SetTextureBlendMode( mTexture, blending );
+}
+        
+void LTexture::setAlpha( Uint8 alpha )
+{
+    //Modulate texture alpha
+    SDL_SetTextureAlphaMod( mTexture, alpha );
+}
+
 int LTexture::getWidth()
 {
 	return mWidth;
@@ -214,11 +234,23 @@ bool loadMedia()
 {
 	bool succes = true;
 
-	// Cargamos las sprites de hojas
-	if( !gModulatedTexture.loadFromFile("res/gfx/colors.png") )
+	// Cargamos la textura alfa frontal
+	if( !gModulatedTexture.loadFromFile("res/gfx/fadeout.png") )
 	{
 		printf("No se pudo cargar la textura imagen dots!\n");
 		succes = false;
+	}
+	else
+	{
+		// Establecer la mezcla alfa estándar
+		gModulatedTexture.setBlendMode(SDL_BLENDMODE_BLEND);
+	}
+
+	//cargar textura de back
+	if( !gBackgroundTexture.loadFromFile( "res/gfx/fadein.png" ) )
+	{
+			printf( "Failed to load background texture!\n" );
+			succes = false;
 	}
 
 	return succes;
@@ -261,10 +293,8 @@ int main(int argc, char* args[])
 			// Declaramos el evento, que es cuando hacemos una accion con un periferic de entrada
 			SDL_Event e;
 
-			// Modulation components
-			Uint8 r = 255;
-			Uint8 g = 255;
-			Uint8 b = 255;
+			// Modulation component
+			Uint8 a = 255;
 
 			// la condicion de salida
 			bool quit = false;
@@ -280,28 +310,32 @@ int main(int argc, char* args[])
 					if( e.type == SDL_QUIT ) quit = true;
 					else if(e.type == SDL_KEYDOWN)
 					{
-						switch (e.key.keysym.sym)
+						if( e.key.keysym.sym == SDLK_w )
 						{
-						case SDLK_q:
-							r+=32;
-							break;
-						case SDLK_w:
-							g+=32;
-							break;
-						case SDLK_e:
-							b+=32;
-							break;
-						case SDLK_r:
-							r-=32;
-							break;
-						case SDLK_t:
-							g-=32;
-							break;
-						case SDLK_y:
-							b-=32;
-							break;
-						default:
-							break;
+							//Cap if over 255
+							if( a + 32 > 255 )
+							{
+								a = 255;
+							}
+							//Increment otherwise
+							else
+							{
+								a += 32;
+							}
+						}
+						//Decrease alpha on s
+						else if( e.key.keysym.sym == SDLK_s )
+						{
+							//Cap if below 0
+							if( a - 32 < 0 )
+							{
+								a = 0;
+							}
+							//Decrement otherwise
+							else
+							{
+								a -= 32;
+							}
 						}
 					}
 				}
@@ -310,8 +344,11 @@ int main(int argc, char* args[])
 				SDL_SetRenderDrawColor( gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 				SDL_RenderClear(gRenderer);
 
+				//Render background
+				gBackgroundTexture.render( 0, 0 );
+
 				// Modularizar y renderizar
-				gModulatedTexture.setColor(r,g,b);
+				gModulatedTexture.setAlpha(a);
 				gModulatedTexture.render(0,0);
 
 				// actualizamos la pantalla
