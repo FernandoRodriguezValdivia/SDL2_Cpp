@@ -3,9 +3,8 @@
 #include <stdio.h>
 #include <string>
 
-// alpha blending.
-// Gracias al nuevo renderizado acelerado por hardware, la transparencia es mucho más rápida en SDL 2.0. 
-// Aquí usaremos la modulación alfa (que funciona de manera muy similar a la modulación de color) para controlar la transparencia de una textura.
+// animacion con secuencia de sprites.
+// La animación en pocas palabras es solo mostrar una imagen tras otra para crear la ilusión de movimiento. Aquí mostraremos diferentes sprites para animar una figura de palo.
 
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
@@ -66,9 +65,11 @@ SDL_Window* gWindow = NULL;
 // El renderizador de la ventana ( cuando usamos texturas se necesita un SDL_Renderer para mostrarlo en pantalla)
 SDL_Renderer* gRenderer = NULL;
 
-LTexture gModulatedTexture;
-
-LTexture gBackgroundTexture;
+//Walking animation
+const int ANIMATION_FRAMES = 9;
+const int imgRow = 4;
+SDL_Rect gSpriteClips[ ANIMATION_FRAMES ];
+LTexture gSpriteSheetTexture;
 
 LTexture::LTexture()
 {
@@ -151,8 +152,8 @@ void LTexture::render( int x, int y, SDL_Rect* clip)
 	// Establecer las dimensiones clip de renderizado
 	if( clip != NULL)
 	{
-		renderQuad.w = clip->w;
-		renderQuad.h = clip->h;
+		renderQuad.w = clip->w / 2;
+		renderQuad.h = clip->h / 2;
 	}
 
 	// Renderizamos al screen (ahora usamos el clip para tomar unaa parte de la textura)
@@ -206,7 +207,7 @@ bool init()
 		else
 		{
 			// Creamos el renderizador de la ventana
-			gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
+			gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 			if( gRenderer == NULL )
 			{
 				printf("El renderizador no pudo ser creado! SDL_ERROR: %s\n", SDL_GetError());
@@ -235,22 +236,21 @@ bool loadMedia()
 	bool succes = true;
 
 	// Cargamos la textura alfa frontal
-	if( !gModulatedTexture.loadFromFile("res/gfx/fadeout.png") )
+	if( !gSpriteSheetTexture.loadFromFile("res/gfx/shadow_dog.png") )
 	{
 		printf("No se pudo cargar la textura imagen dots!\n");
 		succes = false;
 	}
 	else
 	{
-		// Establecer la mezcla alfa estándar
-		gModulatedTexture.setBlendMode(SDL_BLENDMODE_BLEND);
-	}
-
-	//cargar textura de back
-	if( !gBackgroundTexture.loadFromFile( "res/gfx/fadein.png" ) )
-	{
-			printf( "Failed to load background texture!\n" );
-			succes = false;
+		//Set sprite clips
+		for( int i = 0; i < ANIMATION_FRAMES ; i++)
+		{
+			gSpriteClips[ i ].x =   i * 575;
+			gSpriteClips[ i ].y =   523 * ( imgRow - 1 );
+			gSpriteClips[ i ].w =  575;
+			gSpriteClips[ i ].h = 523;	
+		}
 	}
 
 	return succes;
@@ -259,7 +259,7 @@ bool loadMedia()
 void close()
 {
 	// liberar imagenes cargada en textura
-	gModulatedTexture.free();
+	gSpriteSheetTexture.free();
 
 	// destruimos la ventana
 	SDL_DestroyRenderer( gRenderer );
@@ -293,8 +293,8 @@ int main(int argc, char* args[])
 			// Declaramos el evento, que es cuando hacemos una accion con un periferic de entrada
 			SDL_Event e;
 
-			// Modulation component
-			Uint8 a = 255;
+			//Current animation frame
+			int frame = 0;
 
 			// la condicion de salida
 			bool quit = false;
@@ -307,52 +307,28 @@ int main(int argc, char* args[])
 				while( SDL_PollEvent( &e ) )
 				{ 
 					// Si el evento es de SDL_QUIT que es cuando se cierra la ultima ventana se sale
-					if( e.type == SDL_QUIT ) quit = true;
-					else if(e.type == SDL_KEYDOWN)
-					{
-						if( e.key.keysym.sym == SDLK_w )
-						{
-							//Cap if over 255
-							if( a + 32 > 255 )
-							{
-								a = 255;
-							}
-							//Increment otherwise
-							else
-							{
-								a += 32;
-							}
-						}
-						//Decrease alpha on s
-						else if( e.key.keysym.sym == SDLK_s )
-						{
-							//Cap if below 0
-							if( a - 32 < 0 )
-							{
-								a = 0;
-							}
-							//Decrement otherwise
-							else
-							{
-								a -= 32;
-							}
-						}
-					}
+					if( e.type == SDL_QUIT ) quit = true;	
 				}
 
 				// Limpiamos la pantalla con el color de fondo
 				SDL_SetRenderDrawColor( gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 				SDL_RenderClear(gRenderer);
 
-				//Render background
-				gBackgroundTexture.render( 0, 0 );
-
-				// Modularizar y renderizar
-				gModulatedTexture.setAlpha(a);
-				gModulatedTexture.render(0,0);
+				//Render current frame
+				SDL_Rect* currentClip = &gSpriteClips[ (frame/3) % 7 ];
+				gSpriteSheetTexture.render( 0, 0, currentClip );
 
 				// actualizamos la pantalla
 				SDL_RenderPresent( gRenderer );
+
+				//Go to next frame
+				++frame;
+
+				//Cycle animation
+				// if( ((frame / 8) + 1) / 4 >= WALKING_ANIMATION_FRAMES )
+				// {
+				// 	frame = 0;
+				// }
 			}
 		}
 	}
